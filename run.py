@@ -9,6 +9,7 @@ from config import LOGIN_URL, RESERVATIONS_URL
 
 load_dotenv()
 
+DEBUG = os.environ.get("DEBUG", False)
 
 def get_session():
     session = requests.Session()
@@ -37,8 +38,8 @@ def get_session():
     return session
 
 
-def get_reservations_page(debug=False):
-    if debug:
+def get_reservations_page():
+    if DEBUG:
         with open('example.html', 'r') as file:
             example = file.read()
         return BeautifulSoup(example, 'html.parser')
@@ -51,7 +52,7 @@ def get_reservations_page(debug=False):
 def get_reservations():
     reservations = {}
 
-    soup = get_reservations_page(debug=True)
+    soup = get_reservations_page()
 
     for res in soup.find_all("div", class_="panel reservation"):
         user_info = res.find("span", id=re.compile(r"username-reservation-\d+"))
