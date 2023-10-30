@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import requests
 from bs4 import BeautifulSoup
 
-from config import LOGIN_URL, RESERVATIONS_URL
+from config import LOGIN_URL, RESERVATIONS_URL, LOANS_URL
 
 load_dotenv()
 
@@ -62,11 +62,31 @@ def get_reservations():
         reservation_items = []
 
         for item in res.table.tbody.find_all("tr"):
+            # Check if its warning us about duplicates.
+            renewal = False
+            warning = False
+            if item.find_all("span", class_="text-warning"):
+                warning = True
+                item_link = item.find_all("a")[0]
+                item_id = re.search(r"show/(\d+)$", item_link.attrs["href"])[1]
+
+                session = get_session()
+                response = session.post(LOANS_URL, data={
+                    "item.id": item_id,
+                    "includeProjectData": "false",
+                    "brief": "true",
+                    "out": "true",
+                })
+
+                renewal = user_id == str(response.json()["data"][0]["user"]["id"])
+
             values = [col.text.strip() for col in item.find_all("td")]
             reservation_items.append({
                 "id": values[1],
                 "name": values[2],
-                "location": values[3]
+                "location": values[3],
+                "renewal": renewal,
+                "warning": warning,
             })
 
         if user_id in reservations.keys():
@@ -86,7 +106,12 @@ for user_id, user in get_reservations().items():
     print(f"{user['user_name']}")
     print("-------------------------------")
     for item in user["items"]:
-        print(f"{item['id']} {item['location']} {item['name']}")
+        line = f"{item['id']} {item['location']} {item['name']}"
+        if item["renewal"]:
+            line = "[RENEWAL] " + line
+        elif item["warning"]:
+            line = "[⚠️] " + line
+        print(line)
     print("\r")
     print("\r")
 
