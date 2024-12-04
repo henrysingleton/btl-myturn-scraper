@@ -1,1 +1,5 @@
 .env
+lambda_function.zip
+venv
+.venv
+.DS_Store

@@ -1,13 +1,10 @@
 import re
 import os
-from dotenv import load_dotenv
 
 import requests
 from bs4 import BeautifulSoup
 
 from config import LOGIN_URL, RESERVATIONS_URL, LOANS_URL, SEARCH_USERS_URL
-
-load_dotenv()
 
 DEBUG = os.environ.get("DEBUG", False)
 
@@ -37,9 +34,7 @@ def get_session():
 
     return session
 
-session = get_session()
-
-def get_reservations_page():
+def get_reservations_page(session):
     # if DEBUG:
     #     with open('example.html', 'r') as file:
     #         example = file.read()
@@ -49,10 +44,10 @@ def get_reservations_page():
     return BeautifulSoup(response.text, 'html.parser')
 
 
-def get_reservations():
+def get_reservations(session):
     reservations = {}
 
-    soup = get_reservations_page()
+    soup = get_reservations_page(session)
 
     for res in soup.find_all("div", class_="panel reservation"):
         user_info = res.find("span", id=re.compile(r"username-reservation-\d+"))
@@ -115,23 +110,20 @@ def get_reservations():
 
     return reservations
 
-
-
-for user_id, user in get_reservations().items():
-
-    print(f"{user['user_name']}")
-    print("-------------------------------")
-    for item in user["items"]:
-        line = f"{item['id']} \t {item['location']} \t {item['name']}"
-        if item["renewal"]:
-            line = "[RENEWAL] " + line
-
-        if item["currently_out_to"]:
-            print(line + "*")
-            print(f"\t\t\t\t\t*Currently out to {item['currently_out_to']['displayName']} ({item['currently_out_to']['phone']})\r")
-        else:
-            print(line)
-
-    print("\r")
-    print("\r")
+def build_output(session):
+    lines = []
+    for user_id, user in get_reservations(session).items():
+        lines.append(f"{user['user_name']}")
+        lines.append("-------------------------------")
+        for item in user["items"]:
+            line = f"{item['id']} \t {item['location']} \t {item['name']}"
+            if item["renewal"]:
+                line = "[RENEWAL] " + line
+            if item["currently_out_to"]:
+                lines.append(line + "*")
+                lines.append(f"\t\t*Currently out to {item['currently_out_to']['displayName']} ({item['currently_out_to']['phone']})\r")
+            else:
+                lines.append(line)
+        lines.append("\r\r\r\r")
+    return lines
 
